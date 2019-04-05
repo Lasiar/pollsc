@@ -29,6 +29,17 @@ type Message struct {
 	Text       string
 }
 
+type Storage map[int]struct {
+	Url url.URL
+	ch  chan bool
+}
+
+var storage Storage
+
+func init() {
+	storage = make(Storage)
+}
+
 func Start() (chan Client, chan int, chan Message) {
 	out := make(chan Message)
 	AddClient, DeleteClient := make(chan Client), make(chan int)
@@ -39,19 +50,30 @@ func Start() (chan Client, chan int, chan Message) {
 }
 
 func Worker(AddClients chan Client, DeleteChan chan int, out chan Message) {
-	c := make(map[int]chan bool)
 	for {
 		select {
+
 		case client := <-AddClients:
 			fmt.Println(client)
 			deleteChan := make(chan bool)
-			c[client.ClientID] = deleteChan
+
+			storage[client.ClientID] = struct {
+				Url url.URL
+				ch  chan bool
+			}{Url: client.Url, ch: deleteChan}
+
 			go client.Checker(out, deleteChan)
+
 		case id := <-DeleteChan:
-			c[id] <- true
-			delete(c, id)
+			storage[id].ch <- true
+			delete(storage, id)
 		}
 	}
+}
+
+func GetInfo(id int) string {
+	st := storage[id]
+	return st.Url.String()
 }
 
 func (c Client) Checker(out chan Message, DeleteChan chan bool) {
@@ -59,6 +81,7 @@ func (c Client) Checker(out chan Message, DeleteChan chan bool) {
 	httpClient := http.Client{
 		Timeout: time.Duration(5 * time.Second),
 	}
+
 	for {
 		select {
 		case <-timer.C:
@@ -89,7 +112,6 @@ func (c Client) Checker(out chan Message, DeleteChan chan bool) {
 				out <- Message{Client: c, Text: "Исчез из сети", HttpStatus: resp.Status}
 				continue
 			}
-
 		case <-DeleteChan:
 			fmt.Println("remove: ", c.ClientID)
 			return

@@ -5,9 +5,9 @@ Wrapper over server
 package client
 
 import (
+	"github.com/Lasiar/pollsc/server"
 	"net/url"
 	"strings"
-	"terminal-vk/server"
 	"time"
 )
 
@@ -35,22 +35,33 @@ func middleChangeState(out chan server.Message, outMessage chan Message) {
 	}
 }
 
-func Processed(message string, id int) error {
+func Processed(message string, id int) (string, error) {
+	firstWord := message
+	arguments := ""
 
 	firstSpace := strings.Index(message, " ")
-	firstWord := message[:firstSpace]
+
+	if firstSpace > 0 {
+		firstWord = message[:firstSpace]
+		arguments = message[firstSpace:]
+	}
 
 	if len(message)+2 == firstSpace {
-		return nil
+		return "", nil
 	}
-
-	arguments := message[firstSpace:]
 
 	if firstWord == "listen" {
-		return addToListen(arguments, id)
+		if err := addToListen(arguments, id); err != nil {
+			return "", err
+		}
+		return "Added", nil
 	}
 
-	return nil
+	if firstWord == "get-all" {
+		return server.GetInfo(id), nil
+	}
+
+	return "Не понял комнду", nil
 }
 
 func addToListen(args string, id int) error {

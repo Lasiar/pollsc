@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/Lasiar/pollsc/VK"
+	"github.com/Lasiar/pollsc/base"
+	"github.com/Lasiar/pollsc/client"
 	"log"
 	"os"
-	"terminal-vk/VK"
-	"terminal-vk/base"
-	"terminal-vk/client"
 )
 
 func main() {
@@ -35,8 +35,8 @@ func main() {
 			}
 
 		case update := <-updates:
-			err := client.Processed(update.Object.Text, update.Object.FromID)
-			if err := bot.MessagesSend("Added", update.Object.FromID); err != nil {
+			message, err := client.Processed(update.Object.Text, update.Object.FromID)
+			if err := bot.MessagesSend(message, update.Object.FromID); err != nil {
 				log.Println(err)
 				continue
 			}
@@ -49,4 +49,3 @@ func main() {
 		}
 	}
 }
-

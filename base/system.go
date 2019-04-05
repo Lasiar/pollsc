@@ -27,7 +27,7 @@ func GetConfig() *config {
 
 func (c *config) load() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
-	confFile, err := os.Open("/etc/poolsc/prod.config.json")
+	confFile, err := os.Open("/etc/pollsc/prod.config.json")
 	if err != nil {
 		log.Fatal(err)
 	}
