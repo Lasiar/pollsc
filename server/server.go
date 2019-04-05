@@ -46,7 +46,7 @@ func Worker(AddClients chan Client, DeleteChan chan int, out chan Message) {
 			fmt.Println(client)
 			deleteChan := make(chan bool)
 			c[client.ClientID] = deleteChan
-			go client.Cheker(out, deleteChan)
+			go client.Checker(out, deleteChan)
 		case id := <-DeleteChan:
 			c[id] <- true
 			delete(c, id)
@@ -54,7 +54,7 @@ func Worker(AddClients chan Client, DeleteChan chan int, out chan Message) {
 	}
 }
 
-func (c Client) Cheker(out chan Message, DeleteChan chan bool) {
+func (c Client) Checker(out chan Message, DeleteChan chan bool) {
 	timer := time.NewTimer(c.Timer)
 	httpClient := http.Client{
 		Timeout: time.Duration(5 * time.Second),
