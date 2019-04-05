@@ -2,19 +2,20 @@ package main
 
 import (
 	"fmt"
-	"github.com/Lasiar/pollsc/VK"
-	"github.com/Lasiar/pollsc/base"
-	"github.com/Lasiar/pollsc/client"
 	"log"
 	"os"
+
+	"github.com/Lasiar/pollsc/base"
+	"github.com/Lasiar/pollsc/client"
+	"github.com/Lasiar/pollsc/vk"
 )
 
 func main() {
 
-	bot := VK.New(base.GetConfig().VkToken, "5.92")
+	bot := vk.New(base.GetConfig().VkToken, "5.92")
 
 	bot.Debug = true
-	logger := log.New(os.Stderr, "VK ", log.LstdFlags)
+	logger := log.New(os.Stderr, "vk ", log.LstdFlags)
 
 	bot.SetLogger(logger)
 

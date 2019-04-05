@@ -1,4 +1,4 @@
-package VK
+package vk
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"strconv"
 )
 
+// LongPollingUpdate response long poll server
 type LongPollingUpdate struct {
 	Type   string `json:"type"`
 	Object struct {
@@ -19,11 +20,12 @@ type LongPollingUpdate struct {
 	} `json:"object"`
 }
 
-func (vk VK) GetLongPoolServer(GroupID int) (LongPollServer, error) {
+// GetLongPoolServer get server by specific group
+func (vk VK) GetLongPoolServer(groupID int) (LongPollServer, error) {
 	vk.url.Path = "/method/groups.getLongPollServer"
 
 	query := vk.url.Query()
-	query.Add("group_id", strconv.Itoa(GroupID))
+	query.Add("group_id", strconv.Itoa(groupID))
 	vk.url.RawQuery = query.Encode()
 
 	resp, err := vk.exec()
@@ -40,6 +42,7 @@ func (vk VK) GetLongPoolServer(GroupID int) (LongPollServer, error) {
 	return *longPollServer, longPollServer.Error.error()
 }
 
+// Listen update channel
 func (lps LongPollServer) Listen() chan LongPollingUpdate {
 	c := make(chan LongPollingUpdate, 1024)
 
@@ -70,14 +73,14 @@ func (lps LongPollServer) Listen() chan LongPollingUpdate {
 
 			buf.ReadFrom(resp.Body)
 
-			//	log.Println(buf.String())
-
 			if err := json.NewDecoder(&buf).Decode(&responseLongPollServer); err != nil {
 				log.Println(err)
 			}
 
-			for _, msg := range responseLongPollServer.Updates {
-				c <- msg
+			if responseLongPollServer != nil {
+				for _, msg := range responseLongPollServer.Updates {
+					c <- msg
+				}
 			}
 
 			responseLongPollServer.Updates = nil

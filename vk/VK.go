@@ -1,4 +1,4 @@
-package VK
+package vk
 
 import (
 	"bytes"
@@ -15,7 +15,8 @@ import (
 	"strconv"
 )
 
-func New(token string, versionAPI string) *VK {
+// New new vk instance
+func New(token, versionAPI string) *VK {
 	query := query{URL: url.URL{Scheme: "https", Host: "api.vk.com"}}
 
 	values := query.Query()
@@ -29,14 +30,16 @@ func New(token string, versionAPI string) *VK {
 	return &VK{query, false, std}
 }
 
+// VK main vk instance
 type VK struct {
 	url   query
 	Debug bool
 	log   *log.Logger
 }
 
-func (vk *VK) SetLogger(log *log.Logger) {
-	vk.log = log
+// SetLogger set specific logger for vk bot
+func (vk *VK) SetLogger(logger *log.Logger) {
+	vk.log = logger
 }
 
 type query struct {
@@ -44,23 +47,24 @@ type query struct {
 	url.Values
 }
 
-type ErrorResponse struct {
+type errorResponse struct {
 	Code    int    `json:"error_code"`
 	Message string `json:"error_msg"`
 }
 
-func (e ErrorResponse) String() string {
-	return fmt.Sprintf("VK: code: %d; messages: %s", e.Code, e.Message)
+func (e errorResponse) String() string {
+	return fmt.Sprintf("vk: code: %d; messages: %s", e.Code, e.Message)
 }
 
-func (e ErrorResponse) error() error {
+func (e errorResponse) error() error {
 	if e.Message == "" {
 		return nil
-	} else {
-		return errors.New(fmt.Sprint(e))
 	}
+
+	return errors.New(fmt.Sprint(e))
 }
 
+// Message vk message
 type Message struct {
 	ID          int          `json:"id"`
 	Date        int          `json:"date"`
@@ -75,13 +79,15 @@ type Message struct {
 	Attachments []Attachment `json:"attachments"`
 }
 
+// Attachment vk attachment
 type Attachment struct {
 	Type  string `json:"type"`
 	Photo Photo  `json:"photo"`
 }
 
+// Photo photo vk
 type Photo struct {
-	Id      int    `json:"id"`
+	ID      int    `json:"id"`
 	AlbumID int    `json:"album_id"`
 	OwnerID int    `json:"owner_id"`
 	UserID  int    `json:"user_id"`
@@ -89,26 +95,30 @@ type Photo struct {
 	Date    int    `json:"date"`
 	Sizes   []struct {
 		Type   string `json:"type"`
-		Url    string `json:"url"`
+		URL    string `json:"url"`
 		Width  int    `json:"width"`
 		Height int    `json:"height"`
 	} `json:"sizes"`
 }
+
+// LongPollServer settings long poll server vk
 type LongPollServer struct {
 	Response struct {
 		Key    string `json:"key"`
 		Server string `json:"server"`
 		Ts     string `json:"ts"`
 	} `json:"response"`
-	Error ErrorResponse
+	Error errorResponse
 }
 
+// ResponseLongPollServer response message from long pool server vk
 type ResponseLongPollServer struct {
 	Ts      string              `json:"ts"`
 	Updates []LongPollingUpdate `json:"updates"`
 }
 
-func (vk VK) GetMessages() (Message, error) {
+// GetConversations get conversations
+func (vk VK) GetConversations() (Message, error) {
 	query := vk.url.Query()
 
 	query.Add("count", "2")
@@ -127,9 +137,10 @@ func (vk VK) GetMessages() (Message, error) {
 		fmt.Println(err)
 	}
 
-	return *messages, nil //messages.Error.error()
+	return *messages, nil
 }
 
+// MessagesSend  send messages for specific user by id
 func (vk VK) MessagesSend(message string, userID int) error {
 	vk.url.Path = "/method/messages.send"
 
@@ -145,17 +156,18 @@ func (vk VK) MessagesSend(message string, userID int) error {
 		return err
 	}
 
-	error := struct {
-		Error ErrorResponse `json:"error"`
+	errorReq := struct {
+		Error errorResponse `json:"errorReq"`
 	}{}
 
-	if err := json.NewDecoder(resp).Decode(&error); err != nil {
+	if err := json.NewDecoder(resp).Decode(&errorReq); err != nil {
 		return err
 	}
 
-	return error.Error.error()
+	return errorReq.Error.error()
 }
 
+// User vk account info
 type User struct {
 	ID              int    `json:"id"`
 	FirstName       string `json:"first_name"`
@@ -164,6 +176,7 @@ type User struct {
 	CanAccessClosed bool   `json:"can_access_closed"`
 }
 
+// UserList list users vk
 type UserList struct {
 	Response struct {
 		Count int    `json:"count"`
@@ -171,6 +184,7 @@ type UserList struct {
 	} `json:"response"`
 }
 
+// SearchUser get user by specific query
 func (vk VK) SearchUser(searchQuery string) (User, error) {
 	vk.url.Path = "/method/users.search"
 
@@ -185,7 +199,7 @@ func (vk VK) SearchUser(searchQuery string) (User, error) {
 
 	user := new(struct {
 		User
-		Error ErrorResponse `json:"error"`
+		Error errorResponse `json:"error"`
 	})
 
 	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
@@ -195,6 +209,7 @@ func (vk VK) SearchUser(searchQuery string) (User, error) {
 
 }
 
+// UsersGet get user info by []id
 func (vk VK) UsersGet(ids ...int) ([]User, error) {
 	vk.url.Path = "/method/users.get"
 
@@ -222,7 +237,7 @@ func (vk VK) UsersGet(ids ...int) ([]User, error) {
 
 	response := struct {
 		Response []User        `json:"response"`
-		Error    ErrorResponse `json:"error"`
+		Error    errorResponse `json:"error"`
 	}{}
 
 	resp, err := vk.exec()
@@ -237,6 +252,7 @@ func (vk VK) UsersGet(ids ...int) ([]User, error) {
 
 }
 
+// Conversation vk chats
 type Conversation struct {
 	Peer struct {
 		ID      int    `json:"id"`
@@ -251,12 +267,14 @@ type Conversation struct {
 	} `json:"can_write"`
 }
 
+// GetMessages get message info
 type GetMessages struct {
 	Conversation Conversation `json:"conversation"`
 	Messages     Message      `json:"last_message"`
-	Profiles     User       `json:"profiles"`
+	Profiles     User         `json:"profiles"`
 }
 
+// SearchFriends search friends by specific query
 func (vk VK) SearchFriends(searchQuery string) (User, error) {
 	vk.url.Path = "/method/friends.search"
 
@@ -271,7 +289,7 @@ func (vk VK) SearchFriends(searchQuery string) (User, error) {
 
 	user := new(struct {
 		User
-		Error ErrorResponse `json:"error"`
+		Error errorResponse `json:"error"`
 	})
 
 	if err := json.NewDecoder(resp).Decode(&user); err != nil {
@@ -280,6 +298,7 @@ func (vk VK) SearchFriends(searchQuery string) (User, error) {
 	return user.User, user.Error.error()
 }
 
+// MessagesGetConversations todo rewrite all vk bot
 func (vk VK) MessagesGetConversations() ([]GetMessages, error) {
 	vk.url.Path = "/method/messages.getConversations"
 
@@ -298,7 +317,7 @@ func (vk VK) MessagesGetConversations() ([]GetMessages, error) {
 			Items    []GetMessages `json:"items"`
 			Profiles []User        `json:"profiles"`
 		} `json:"response"`
-		Error ErrorResponse `json:"error"`
+		Error errorResponse `json:"error"`
 	}{}
 
 	if err := json.NewDecoder(resp).Decode(&response); err != nil {

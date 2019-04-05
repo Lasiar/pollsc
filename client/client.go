@@ -5,21 +5,24 @@ Wrapper over server
 package client
 
 import (
-	"github.com/Lasiar/pollsc/server"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/Lasiar/pollsc/server"
 )
 
 var (
 	add chan server.Client
 )
 
+// Message message for user
 type Message struct {
 	Text string
 	ID   int
 }
 
+// Init init client
 func Init() chan Message {
 	var out chan server.Message
 
@@ -35,6 +38,7 @@ func middleChangeState(out chan server.Message, outMessage chan Message) {
 	}
 }
 
+// Processed main work client
 func Processed(message string, id int) (string, error) {
 	firstWord := message
 	arguments := ""
@@ -69,7 +73,7 @@ func addToListen(args string, id int) error {
 
 	urls := strings.Split(strings.TrimSpace(args), ",")
 
-	validUrls := make([]*url.URL, len(urls), len(urls))
+	validUrls := make([]*url.URL, len(urls))
 
 	for i, current := range urls {
 		validUrls[i], err = url.Parse(current)
@@ -77,7 +81,7 @@ func addToListen(args string, id int) error {
 		if validUrls[i].Scheme == "" {
 			return err
 		}
-		add <- server.Client{ClientID: id, Url: *validUrls[i], Timer: time.Duration(10 * time.Second)}
+		add <- server.Client{ClientID: id, URL: *validUrls[i], Timer: time.Duration(10 * time.Second)}
 	}
 
 	return nil

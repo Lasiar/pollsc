@@ -8,75 +8,76 @@ import (
 	"time"
 )
 
+// State status polling service
 type State struct {
-	timer   *time.Timer
-	current int
-	id      int
-	Url     string
+	URL string
 }
 
+// Client object for service
 type Client struct {
 	IsGood   bool
-	event    int
 	ClientID int
-	Url      url.URL
+	URL      url.URL
 	Timer    time.Duration
 }
 
+// Message message for user
 type Message struct {
 	Client     Client
-	HttpStatus string
+	HTTPStatus string
 	Text       string
 }
 
-type Storage map[int]struct {
-	Url url.URL
+type storage map[int]struct {
+	URL url.URL
 	ch  chan bool
 }
 
-var storage Storage
+var storages storage
 
 func init() {
-	storage = make(Storage)
+	storages = make(storage)
 }
 
-func Start() (chan Client, chan int, chan Message) {
-	out := make(chan Message)
-	AddClient, DeleteClient := make(chan Client), make(chan int)
+// Start start work server
+func Start() (addClient chan Client, deleteClient chan int, message chan Message) {
+	message = make(chan Message)
+	addClient, deleteClient = make(chan Client), make(chan int)
 
-	go Worker(AddClient, DeleteClient, out)
+	go worker(addClient, deleteClient, message)
 
-	return AddClient, DeleteClient, out
+	return addClient, deleteClient, message
 }
 
-func Worker(AddClients chan Client, DeleteChan chan int, out chan Message) {
+func worker(addClients chan Client, deleteChan chan int, out chan Message) {
 	for {
 		select {
 
-		case client := <-AddClients:
+		case client := <-addClients:
 			fmt.Println(client)
 			deleteChan := make(chan bool)
 
-			storage[client.ClientID] = struct {
-				Url url.URL
+			storages[client.ClientID] = struct {
+				URL url.URL
 				ch  chan bool
-			}{Url: client.Url, ch: deleteChan}
+			}{URL: client.URL, ch: deleteChan}
 
-			go client.Checker(out, deleteChan)
+			go client.checker(out, deleteChan)
 
-		case id := <-DeleteChan:
-			storage[id].ch <- true
-			delete(storage, id)
+		case id := <-deleteChan:
+			storages[id].ch <- true
+			delete(storages, id)
 		}
 	}
 }
 
+// GetInfo get subscriber service for user
 func GetInfo(id int) string {
-	st := storage[id]
-	return st.Url.String()
+	st := storages[id]
+	return st.URL.String()
 }
 
-func (c Client) Checker(out chan Message, DeleteChan chan bool) {
+func (c Client) checker(out chan Message, deleteChan chan bool) {
 	timer := time.NewTimer(c.Timer)
 	httpClient := http.Client{
 		Timeout: time.Duration(5 * time.Second),
@@ -85,14 +86,14 @@ func (c Client) Checker(out chan Message, DeleteChan chan bool) {
 	for {
 		select {
 		case <-timer.C:
-			resp, err := httpClient.Get(c.Url.String())
-			log.Println("http get ", c.Url)
+			resp, err := httpClient.Get(c.URL.String())
+			log.Println("http get ", c.URL)
 
 			timer.Reset(c.Timer)
 
 			if err != nil {
 
-				if c.IsGood == true {
+				if c.IsGood {
 					c.IsGood = false
 					out <- Message{Client: c, Text: fmt.Sprint(err)}
 				}
@@ -102,17 +103,17 @@ func (c Client) Checker(out chan Message, DeleteChan chan bool) {
 			// All ok`
 			if resp.StatusCode < 400 && !c.IsGood {
 				c.IsGood = true
-				out <- Message{Client: c, Text: "Появилась в сети", HttpStatus: resp.Status}
+				out <- Message{Client: c, Text: "Появилась в сети", HTTPStatus: resp.Status}
 				continue
 			}
 
 			// Error
 			if resp.StatusCode > 400 && c.IsGood {
 				c.IsGood = false
-				out <- Message{Client: c, Text: "Исчез из сети", HttpStatus: resp.Status}
+				out <- Message{Client: c, Text: "Исчез из сети", HTTPStatus: resp.Status}
 				continue
 			}
-		case <-DeleteChan:
+		case <-deleteChan:
 			fmt.Println("remove: ", c.ClientID)
 			return
 		}

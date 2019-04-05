@@ -3,7 +3,7 @@ WORKDIR /go/src/github.com/Lasiar/pollsc
 COPY ./*.go /go/src/github.com/Lasiar/pollsc/
 COPY ./client/*.go /go/src/github.com/Lasiar/pollsc/client/
 COPY ./server/*.go /go/src/github.com/Lasiar/pollsc/server/
-COPY ./VK/*.go /go/src/github.com/Lasiar/pollsc/VK/
+COPY vk /go/src/github.com/Lasiar/pollsc/VK/
 COPY ./base/*.go /go/src/github.com/Lasiar/pollsc/base/
 RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o main
 

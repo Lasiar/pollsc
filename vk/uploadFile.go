@@ -1,4 +1,4 @@
-package VK
+package vk
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"strconv"
 )
 
+// GetMessagesUploadServer get server bя upload file
 func (vk VK) GetMessagesUploadServer(peerID int) (MessagesUploadServer, error) {
 	vk.url.Path = "/method/docs.getMessagesUploadServer"
 
@@ -28,7 +29,7 @@ func (vk VK) GetMessagesUploadServer(peerID int) (MessagesUploadServer, error) {
 		Response struct {
 			UploadURL string `json:"upload_url"`
 		} `json:"response"`
-		Error ErrorResponse `json:"error"`
+		Error errorResponse `json:"error"`
 	}{}
 
 	m := new(MessagesUploadServer)
@@ -49,14 +50,17 @@ func (vk VK) GetMessagesUploadServer(peerID int) (MessagesUploadServer, error) {
 	return *m, response.Error.error()
 }
 
+// MessagesUploadServer server to send files
 type MessagesUploadServer struct {
 	URL *url.URL `json:"upload_url"`
 }
 
+// File vk file
 type File struct {
 	File string `json:"file"`
 }
 
+// SendFile send file on server vk
 func (m MessagesUploadServer) SendFile(reader io.Reader) (File, error) {
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
