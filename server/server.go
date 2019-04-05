@@ -29,7 +29,7 @@ type Message struct {
 	Text       string
 }
 
-func Test() (chan Client, chan int, chan Message) {
+func Start() (chan Client, chan int, chan Message) {
 	out := make(chan Message)
 	AddClient, DeleteClient := make(chan Client), make(chan int)
 
