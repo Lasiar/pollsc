@@ -8,17 +8,13 @@ import (
 	"time"
 )
 
-// State status polling service
-type State struct {
-	URL string
-}
-
 // Client object for service
 type Client struct {
 	IsGood   bool
 	ClientID int
 	URL      url.URL
 	Timer    time.Duration
+	ch       chan bool
 }
 
 // Message message for user
@@ -28,15 +24,10 @@ type Message struct {
 	Text       string
 }
 
-type storage map[int]struct {
-	URL url.URL
-	ch  chan bool
-}
-
-var storages storage
+var clients map[int]Client
 
 func init() {
-	storages = make(storage)
+	clients = make(map[int]Client)
 }
 
 // Start start work server
@@ -57,23 +48,20 @@ func worker(addClients chan Client, deleteChan chan int, out chan Message) {
 			fmt.Println(client)
 			deleteChan := make(chan bool)
 
-			storages[client.ClientID] = struct {
-				URL url.URL
-				ch  chan bool
-			}{URL: client.URL, ch: deleteChan}
+			clients[client.ClientID] = client
 
 			go client.checker(out, deleteChan)
 
 		case id := <-deleteChan:
-			storages[id].ch <- true
-			delete(storages, id)
+			clients[id].ch <- true
+			delete(clients, id)
 		}
 	}
 }
 
 // GetInfo get subscriber service for user
 func GetInfo(id int) string {
-	st := storages[id]
+	st := clients[id]
 	return st.URL.String()
 }
 
