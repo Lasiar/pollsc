@@ -15,21 +15,6 @@ import (
 	"strconv"
 )
 
-// New new vk instance
-func New(token, versionAPI string) *VK {
-	query := query{URL: url.URL{Scheme: "https", Host: "api.vk.com"}}
-
-	values := query.Query()
-	values.Add("access_token", token)
-	values.Add("v", versionAPI)
-
-	query.RawQuery = values.Encode()
-
-	std := log.New(os.Stderr, "", log.LstdFlags)
-
-	return &VK{query, false, std}
-}
-
 // VK main vk instance
 type VK struct {
 	url   query
@@ -37,31 +22,31 @@ type VK struct {
 	log   *log.Logger
 }
 
-// SetLogger set specific logger for vk bot
-func (vk *VK) SetLogger(logger *log.Logger) {
-	vk.log = logger
-}
-
 type query struct {
 	url.URL
 	url.Values
 }
 
-type errorResponse struct {
-	Code    int    `json:"error_code"`
-	Message string `json:"error_msg"`
+// Conversation vk chats
+type Conversation struct {
+	Peer struct {
+		ID      int    `json:"id"`
+		Type    string `json:"type"`
+		LocalID int    `json:"local_id"`
+	} `json:"peer"`
+	InRead        int `json:"in_read"`
+	OutRead       int `json:"out_read"`
+	LastMessageID int `json:"last_message_id"`
+	CanWrite      struct {
+		Allowed bool `json:"allowed"`
+	} `json:"can_write"`
 }
 
-func (e errorResponse) String() string {
-	return fmt.Sprintf("vk: code: %d; messages: %s", e.Code, e.Message)
-}
-
-func (e errorResponse) error() error {
-	if e.Message == "" {
-		return nil
-	}
-
-	return errors.New(fmt.Sprint(e))
+// GetMessages get message info
+type GetMessages struct {
+	Conversation Conversation `json:"conversation"`
+	Messages     Message      `json:"last_message"`
+	Profiles     User         `json:"profiles"`
 }
 
 // Message vk message
@@ -101,20 +86,38 @@ type Photo struct {
 	} `json:"sizes"`
 }
 
-// LongPollServer settings long poll server vk
-type LongPollServer struct {
-	Response struct {
-		Key    string `json:"key"`
-		Server string `json:"server"`
-		Ts     string `json:"ts"`
-	} `json:"response"`
-	Error errorResponse
+type errorResponse struct {
+	Code    int    `json:"error_code"`
+	Message string `json:"error_msg"`
 }
 
-// ResponseLongPollServer response message from long pool server vk
-type ResponseLongPollServer struct {
-	Ts      string              `json:"ts"`
-	Updates []LongPollingUpdate `json:"updates"`
+// User vk account info
+type User struct {
+	ID              int    `json:"id"`
+	FirstName       string `json:"first_name"`
+	LastName        string `json:"last_name"`
+	IsClosed        bool   `json:"is_closed"`
+	CanAccessClosed bool   `json:"can_access_closed"`
+}
+
+// New new vk instance
+func New(token, versionAPI string) *VK {
+	query := query{URL: url.URL{Scheme: "https", Host: "api.vk.com"}}
+
+	values := query.Query()
+	values.Add("access_token", token)
+	values.Add("v", versionAPI)
+
+	query.RawQuery = values.Encode()
+
+	std := log.New(os.Stderr, "", log.LstdFlags)
+
+	return &VK{query, false, std}
+}
+
+// SetLogger set specific logger for vk bot
+func (vk *VK) SetLogger(logger *log.Logger) {
+	vk.log = logger
 }
 
 // GetConversations get conversations
@@ -165,23 +168,6 @@ func (vk VK) MessagesSend(message string, userID int) error {
 	}
 
 	return errorReq.Error.error()
-}
-
-// User vk account info
-type User struct {
-	ID              int    `json:"id"`
-	FirstName       string `json:"first_name"`
-	LastName        string `json:"last_name"`
-	IsClosed        bool   `json:"is_closed"`
-	CanAccessClosed bool   `json:"can_access_closed"`
-}
-
-// UserList list users vk
-type UserList struct {
-	Response struct {
-		Count int    `json:"count"`
-		Items []User `json:"items"`
-	} `json:"response"`
 }
 
 // SearchUser get user by specific query
@@ -250,28 +236,6 @@ func (vk VK) UsersGet(ids ...int) ([]User, error) {
 
 	return response.Response, response.Error.error()
 
-}
-
-// Conversation vk chats
-type Conversation struct {
-	Peer struct {
-		ID      int    `json:"id"`
-		Type    string `json:"type"`
-		LocalID int    `json:"local_id"`
-	} `json:"peer"`
-	InRead        int `json:"in_read"`
-	OutRead       int `json:"out_read"`
-	LastMessageID int `json:"last_message_id"`
-	CanWrite      struct {
-		Allowed bool `json:"allowed"`
-	} `json:"can_write"`
-}
-
-// GetMessages get message info
-type GetMessages struct {
-	Conversation Conversation `json:"conversation"`
-	Messages     Message      `json:"last_message"`
-	Profiles     User         `json:"profiles"`
 }
 
 // SearchFriends search friends by specific query
@@ -346,4 +310,15 @@ func (vk VK) exec() (io.Reader, error) {
 		return &buf, nil
 	}
 	return resp.Body, nil
+}
+
+func (e errorResponse) String() string {
+	return fmt.Sprintf("vk: code: %d; messages: %s", e.Code, e.Message)
+}
+
+func (e errorResponse) error() error {
+	if e.Message == "" {
+		return nil
+	}
+	return errors.New(fmt.Sprint(e))
 }

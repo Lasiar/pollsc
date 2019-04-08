@@ -20,6 +20,22 @@ type LongPollingUpdate struct {
 	} `json:"object"`
 }
 
+// ResponseLongPollServer response message from long pool server vk
+type ResponseLongPollServer struct {
+	Ts      string              `json:"ts"`
+	Updates []LongPollingUpdate `json:"updates"`
+}
+
+// LongPollServer settings long poll server vk
+type LongPollServer struct {
+	Response struct {
+		Key    string `json:"key"`
+		Server string `json:"server"`
+		Ts     string `json:"ts"`
+	} `json:"response"`
+	Error errorResponse
+}
+
 // GetLongPoolServer get server by specific group
 func (vk VK) GetLongPoolServer(groupID int) (LongPollServer, error) {
 	vk.url.Path = "/method/groups.getLongPollServer"
@@ -71,7 +87,9 @@ func (lps LongPollServer) Listen() chan LongPollingUpdate {
 				log.Fatal(err)
 			}
 
-			buf.ReadFrom(resp.Body)
+			if _, err := buf.ReadFrom(resp.Body); err != nil {
+				log.Println(err)
+			}
 
 			if err := json.NewDecoder(&buf).Decode(&responseLongPollServer); err != nil {
 				log.Println(err)

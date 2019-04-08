@@ -35,7 +35,11 @@ func (vk VK) GetMessagesUploadServer(peerID int) (MessagesUploadServer, error) {
 	m := new(MessagesUploadServer)
 
 	buf := bytes.Buffer{}
-	buf.ReadFrom(resp.Body)
+
+	if _, err := buf.ReadFrom(resp.Body); err != nil {
+		return MessagesUploadServer{}, err
+	}
+
 	fmt.Println(buf.String())
 
 	if err := json.NewDecoder(&buf).Decode(&response); err != nil {
@@ -82,7 +86,9 @@ func (m MessagesUploadServer) SendFile(reader io.Reader) (File, error) {
 	}
 
 	contentType := bodyWriter.FormDataContentType()
-	bodyWriter.Close()
+	if err := bodyWriter.Close(); err != nil {
+		return File{}, err
+	}
 
 	fmt.Println(contentType)
 	fmt.Println(bodyBuf.String())
@@ -93,6 +99,8 @@ func (m MessagesUploadServer) SendFile(reader io.Reader) (File, error) {
 		return File{}, err
 	}
 
-	io.Copy(os.Stdout, resp.Body)
+	if _, err := io.Copy(os.Stdout, resp.Body); err != nil {
+		return File{}, err
+	}
 	return File{}, nil
 }
